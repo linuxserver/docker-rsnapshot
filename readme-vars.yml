@@ -1,0 +1,62 @@
+---
+
+# project information
+project_name: rsnapshot
+project_url: "http://www.rsnapshot.org/"
+project_logo: "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/rsnapshot.png"
+project_blurb: |
+  [{{ project_name|capitalize }}]({{ project_url }}) is a filesystem snapshot utility based on rsync. rsnapshot makes it easy to make periodic snapshots of local machines, and remote machines over ssh. The code makes extensive use of hard links whenever possible, to greatly reduce the disk space required."
+
+project_lsio_github_repo_url: "https://github.com/linuxserver/docker-{{ project_name }}"
+
+# supported architectures
+available_architectures:
+  - { arch: "{{ arch_x86_64 }}", tag: "amd64-latest"}
+  - { arch: "{{ arch_arm64 }}", tag: "arm64v8-latest"}
+  - { arch: "{{ arch_armhf }}", tag: "arm32v7-latest"}
+
+# container parameters
+common_param_env_vars_enabled: true
+param_container_name: "{{ project_name }}"
+param_usage_include_vols: true
+param_volumes:
+  - { vol_path: "/config", vol_host_path: "</path/to/appdata/config>", desc: "Contains all relevant configuration files." }
+param_usage_include_env: true
+param_env_vars:
+  - { env_var: "TZ", env_value: "America/New_York", desc: "Specify a timezone to use EG America/New_York"}
+
+# optional parameters
+opt_param_usage_include_vols: true
+opt_param_volumes:
+  - { vol_path: "/.snapshots", vol_host_path: "</path/to/snapshots>", desc: "Storage location for all snapshots." }
+  - { vol_path: "/data", vol_host_path: "</path/to/data>", desc: "Storage location for data to be backed up." }
+
+# application setup block
+app_setup_block_enabled: true
+app_setup_block: |
+  ### IMPORTANT NOTES:
+  After starting the container you will need to edit `/config/rsnapshot.conf`.
+
+  #### SNAPSHOT ROOT DIRECTORY
+
+  rsnapshot is configured to backup data to the `/.snapshots` volume by default.
+  This can be changed in the config, but be sure you mount a volume to the container to match.
+
+  #### BACKUP LEVELS / INTERVALS
+
+  rsnapshot retains backups based on configurations in this section.
+  Please see the [rsnapshot readme](https://github.com/rsnapshot/rsnapshot/blob/master/README.md#configuration) for more information.
+
+  #### BACKUP POINTS
+
+  rsnapshot is configured to backup data from the `/data` volume by default.
+  This can be changed in the config, but be sure you mount a volume to the container to match.
+
+  ### cron
+
+  You will then need to edit `/config/crontabs/root` to set cron jobs to run rsnapshot.
+  By default no cron jobs are enabled. Examples are includes based on information from the [rsnapshot readme](https://github.com/rsnapshot/rsnapshot/blob/master/README.md#configuration).
+
+# changelog
+changelogs:
+  - { date: "20.08.20:", desc: "Initial Release." }

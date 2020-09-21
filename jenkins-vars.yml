@@ -1,0 +1,29 @@
+---
+
+# jenkins variables
+project_name: docker-rsnapshot
+external_type: alpine_repo
+release_type: stable
+release_tag: latest
+ls_branch: master
+repo_vars:
+  - BUILD_VERSION_ARG = 'RSNAPSHOT_VERSION'
+  - LS_USER = 'linuxserver'
+  - LS_REPO = 'docker-rsnapshot'
+  - CONTAINER_NAME = 'rsnapshot'
+  - DOCKERHUB_IMAGE = 'linuxserver/rsnapshot'
+  - DEV_DOCKERHUB_IMAGE = 'lsiodev/rsnapshot'
+  - PR_DOCKERHUB_IMAGE = 'lspipepr/rsnapshot'
+  - DIST_IMAGE = 'alpine'
+  - DIST_TAG = '3.12'
+  - DIST_REPO = 'http://nl.alpinelinux.org/alpine/v3.12/main/'
+  - DIST_REPO_PACKAGES = 'rsnapshot'
+  - MULTIARCH='true'
+  - CI='true'
+  - CI_WEB='false'
+  - CI_PORT=''
+  - CI_SSL='false'
+  - CI_DELAY='120'
+  - CI_DOCKERENV='TZ=US/Pacific'
+  - CI_AUTH='user:password'
+  - CI_WEBPATH=''

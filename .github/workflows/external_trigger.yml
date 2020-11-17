@@ -17,30 +17,9 @@ jobs:
             exit 0
           fi
           echo "External trigger running off of master branch. To disable this trigger, set a Github secret named \"PAUSE_EXTERNAL_TRIGGER_RSNAPSHOT_MASTER\"."
-          echo "Setting env vars"
-          BUILD_VERSION_ARG='RSNAPSHOT_VERSION'
-          LS_USER='linuxserver'
-          LS_REPO='docker-rsnapshot'
-          CONTAINER_NAME='rsnapshot'
-          DOCKERHUB_IMAGE='linuxserver/rsnapshot'
-          DEV_DOCKERHUB_IMAGE='lsiodev/rsnapshot'
-          PR_DOCKERHUB_IMAGE='lspipepr/rsnapshot'
-          DIST_IMAGE='alpine'
-          DIST_TAG='3.12'
-          DIST_REPO='http://nl.alpinelinux.org/alpine/v3.12/main/'
-          DIST_REPO_PACKAGES='rsnapshot'
-          MULTIARCH='true'
-          CI='true'
-          CI_WEB='false'
-          CI_PORT=''
-          CI_SSL='false'
-          CI_DELAY='120'
-          CI_DOCKERENV='TZ=US/Pacific'
-          CI_AUTH='user:password'
-          CI_WEBPATH=''
           echo "Retrieving external version"
-          EXT_RELEASE=$(docker run --rm alpine:${DIST_TAG} sh -c 'apk update --quiet --repository '"${DIST_REPO}"'\
-            && apk info --repository '"${DIST_REPO}"' '"${DIST_REPO_PACKAGES}"' | md5sum | cut -c1-8')
+          EXT_RELEASE=$(docker run --rm alpine:3.12 sh -c 'apk update --quiet --repository '"http://nl.alpinelinux.org/alpine/v3.12/main/"'\
+            && apk info --repository '"http://nl.alpinelinux.org/alpine/v3.12/main/"' '"rsnapshot"' | md5sum | cut -c1-8')
           if [ -z "${EXT_RELEASE}" ]; then
             echo "Can't retrieve external version, exiting"
             FAILURE_REASON="Can't retrieve external version for rsnapshot branch master"
@@ -51,19 +30,24 @@ jobs:
           fi
           echo "External version: ${EXT_RELEASE}"
           echo "Retrieving last pushed version"
-          image="${LS_USER}/rsnapshot"
+          image="linuxserver/rsnapshot"
           tag="latest"
-          token=$(curl -s \
-            "https://auth.docker.io/token?scope=repository:${image}:pull&service=registry.docker.io" \
+          token=$(curl -sX GET \
+            "https://ghcr.io/token?scope=repository%3Alinuxserver%2Frsnapshot%3Apull" \
             | jq -r '.token')
-          digest=$(curl -s \
-            --header "Accept: application/vnd.docker.distribution.manifest.v2+json" \
-            --header "Authorization: Bearer ${token}" \
-            "https://registry-1.docker.io/v2/${image}/manifests/${tag}" \
-            | jq -r '.config.digest')
+            multidigest=$(curl -s \
+              --header "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+              --header "Authorization: Bearer ${token}" \
+              "https://ghcr.io/v2/${image}/manifests/${tag}" \
+              | jq -r 'first(.manifests[].digest)')
+            digest=$(curl -s \
+              --header "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+              --header "Authorization: Bearer ${token}" \
+              "https://ghcr.io/v2/${image}/manifests/${multidigest}" \
+              | jq -r '.config.digest')
           image_info=$(curl -sL \
             --header "Authorization: Bearer ${token}" \
-            "https://registry-1.docker.io/v2/${image}/blobs/${digest}" \
+            "https://ghcr.io/v2/${image}/blobs/${digest}" \
             | jq -r '.container_config')
           IMAGE_RELEASE=$(echo ${image_info} | jq -r '.Labels.build_version' | awk '{print $3}')
           IMAGE_VERSION=$(echo ${IMAGE_RELEASE} | awk -F'-ls' '{print $1}')

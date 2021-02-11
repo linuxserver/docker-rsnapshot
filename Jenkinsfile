@@ -58,7 +58,7 @@ pipeline {
           env.CODE_URL = 'https://github.com/' + env.LS_USER + '/' + env.LS_REPO + '/commit/' + env.GIT_COMMIT
           env.DOCKERHUB_LINK = 'https://hub.docker.com/r/' + env.DOCKERHUB_IMAGE + '/tags/'
           env.PULL_REQUEST = env.CHANGE_ID
-          env.TEMPLATED_FILES = 'Jenkinsfile README.md LICENSE ./.github/CONTRIBUTING.md ./.github/FUNDING.yml ./.github/ISSUE_TEMPLATE.md ./.github/PULL_REQUEST_TEMPLATE.md ./.github/workflows/greetings.yml ./.github/workflows/stale.yml'
+          env.TEMPLATED_FILES = 'Jenkinsfile README.md LICENSE ./.github/CONTRIBUTING.md ./.github/FUNDING.yml ./.github/ISSUE_TEMPLATE/config.yml ./.github/ISSUE_TEMPLATE/issue.bug.md ./.github/ISSUE_TEMPLATE/issue.feature.md ./.github/PULL_REQUEST_TEMPLATE.md ./.github/workflows/greetings.yml ./.github/workflows/stale.yml ./.github/workflows/package_trigger.yml ./.github/workflows/package_trigger_scheduler.yml ./.github/workflows/external_trigger.yml ./.github/workflows/external_trigger_scheduler.yml'
         }
         script{
           env.LS_RELEASE_NUMBER = sh(
@@ -104,11 +104,10 @@ pipeline {
     // If this is an alpine repo change for external version determine an md5 from the version string
     stage("Set tag Alpine Repo"){
       steps{
-        sh '''docker pull alpine:${DIST_TAG}'''
         script{
           env.EXT_RELEASE = sh(
-            script: '''docker run --rm alpine:${DIST_TAG} sh -c 'apk update --quiet --repository '"${DIST_REPO}"'\
-                       && apk info --repository '"${DIST_REPO}"' '"${DIST_REPO_PACKAGES}"' | md5sum | cut -c1-8' ''',
+            script: '''curl -sL "${DIST_REPO}x86_64/APKINDEX.tar.gz" | tar -xz -C /tmp \
+                       && awk '/^P:'"${DIST_REPO_PACKAGES}"'$/,/V:/' /tmp/APKINDEX | sed -n 2p | sed 's/^V://' ''',
             returnStdout: true).trim()
             env.RELEASE_LINK = 'alpine_repo'
         }
@@ -140,6 +139,7 @@ pipeline {
           } else {
             env.CI_TAGS = env.EXT_RELEASE_CLEAN + '-ls' + env.LS_TAG_NUMBER
           }
+          env.VERSION_TAG = env.EXT_RELEASE_CLEAN + '-ls' + env.LS_TAG_NUMBER
           env.META_TAG = env.EXT_RELEASE_CLEAN + '-ls' + env.LS_TAG_NUMBER
           env.EXT_RELEASE_TAG = 'version-' + env.EXT_RELEASE_CLEAN
         }
@@ -161,6 +161,7 @@ pipeline {
           } else {
             env.CI_TAGS = env.EXT_RELEASE_CLEAN + '-pkg-' + env.PACKAGE_TAG + '-dev-' + env.COMMIT_SHA
           }
+          env.VERSION_TAG = env.EXT_RELEASE_CLEAN + '-pkg-' + env.PACKAGE_TAG + '-dev-' + env.COMMIT_SHA
           env.META_TAG = env.EXT_RELEASE_CLEAN + '-pkg-' + env.PACKAGE_TAG + '-dev-' + env.COMMIT_SHA
           env.EXT_RELEASE_TAG = 'version-' + env.EXT_RELEASE_CLEAN
           env.DOCKERHUB_LINK = 'https://hub.docker.com/r/' + env.DEV_DOCKERHUB_IMAGE + '/tags/'
@@ -182,6 +183,7 @@ pipeline {
           } else {
             env.CI_TAGS = env.EXT_RELEASE_CLEAN + '-pkg-' + env.PACKAGE_TAG + '-pr-' + env.PULL_REQUEST
           }
+          env.VERSION_TAG = env.EXT_RELEASE_CLEAN + '-pkg-' + env.PACKAGE_TAG + '-pr-' + env.PULL_REQUEST
           env.META_TAG = env.EXT_RELEASE_CLEAN + '-pkg-' + env.PACKAGE_TAG + '-pr-' + env.PULL_REQUEST
           env.EXT_RELEASE_TAG = 'version-' + env.EXT_RELEASE_CLEAN
           env.CODE_URL = 'https://github.com/' + env.LS_USER + '/' + env.LS_REPO + '/pull/' + env.PULL_REQUEST
@@ -233,18 +235,66 @@ pipeline {
               TEMPDIR=$(mktemp -d)
               docker pull ghcr.io/linuxserver/jenkins-builder:latest
               docker run --rm -e CONTAINER_NAME=${CONTAINER_NAME} -e GITHUB_BRANCH=master -v ${TEMPDIR}:/ansible/jenkins ghcr.io/linuxserver/jenkins-builder:latest 
+              # Stage 1 - Jenkinsfile update
+              if [[ "$(md5sum Jenkinsfile | awk '{ print $1 }')" != "$(md5sum ${TEMPDIR}/docker-${CONTAINER_NAME}/Jenkinsfile | awk '{ print $1 }')" ]]; then
+                mkdir -p ${TEMPDIR}/repo
+                git clone https://github.com/${LS_USER}/${LS_REPO}.git ${TEMPDIR}/repo/${LS_REPO}
+                cd ${TEMPDIR}/repo/${LS_REPO}
+                git checkout -f master
+                cp ${TEMPDIR}/docker-${CONTAINER_NAME}/Jenkinsfile ${TEMPDIR}/repo/${LS_REPO}/
+                git add Jenkinsfile
+                git commit -m 'Bot Updating Templated Files'
+                git push https://LinuxServer-CI:${GITHUB_TOKEN}@github.com/${LS_USER}/${LS_REPO}.git --all
+                echo "true" > /tmp/${COMMIT_SHA}-${BUILD_NUMBER}
+                echo "Updating Jenkinsfile"
+                rm -Rf ${TEMPDIR}
+                exit 0
+              else
+                echo "Jenkinsfile is up to date."
+              fi
+              # Stage 2 - Delete old templates
+              OLD_TEMPLATES=".github/ISSUE_TEMPLATE.md"
+              for i in ${OLD_TEMPLATES}; do
+                if [[ -f "${i}" ]]; then
+                  TEMPLATES_TO_DELETE="${i} ${TEMPLATES_TO_DELETE}"
+                fi
+              done
+              if [[ -n "${TEMPLATES_TO_DELETE}" ]]; then
+                mkdir -p ${TEMPDIR}/repo
+                git clone https://github.com/${LS_USER}/${LS_REPO}.git ${TEMPDIR}/repo/${LS_REPO}
+                cd ${TEMPDIR}/repo/${LS_REPO}
+                git checkout -f master
+                cd ${TEMPDIR}/docker-${CONTAINER_NAME}
+                for i in ${TEMPLATES_TO_DELETE}; do
+                  git rm "${i}"
+                done
+                git commit -m 'Bot Updating Templated Files'
+                git push https://LinuxServer-CI:${GITHUB_TOKEN}@github.com/${LS_USER}/${LS_REPO}.git --all
+                echo "true" > /tmp/${COMMIT_SHA}-${BUILD_NUMBER}
+                echo "Deleting old templates"
+                rm -Rf ${TEMPDIR}
+                exit 0
+              else
+                echo "No templates to delete"
+              fi
+              # Stage 3 - Update templates
               CURRENTHASH=$(grep -hs ^ ${TEMPLATED_FILES} | md5sum | cut -c1-8)
               cd ${TEMPDIR}/docker-${CONTAINER_NAME}
               NEWHASH=$(grep -hs ^ ${TEMPLATED_FILES} | md5sum | cut -c1-8)
-              if [[ "${CURRENTHASH}" != "${NEWHASH}" ]]; then
+              if [[ "${CURRENTHASH}" != "${NEWHASH}" ]] || ! grep -q '.jenkins-external' "${WORKSPACE}/.gitignore" 2>/dev/null; then
                 mkdir -p ${TEMPDIR}/repo
                 git clone https://github.com/${LS_USER}/${LS_REPO}.git ${TEMPDIR}/repo/${LS_REPO}
                 cd ${TEMPDIR}/repo/${LS_REPO}
                 git checkout -f master
                 cd ${TEMPDIR}/docker-${CONTAINER_NAME}
                 mkdir -p ${TEMPDIR}/repo/${LS_REPO}/.github/workflows
-                cp --parents ${TEMPLATED_FILES} ${TEMPDIR}/repo/${LS_REPO}/
+                mkdir -p ${TEMPDIR}/repo/${LS_REPO}/.github/ISSUE_TEMPLATE
+                cp --parents ${TEMPLATED_FILES} ${TEMPDIR}/repo/${LS_REPO}/ || :
                 cd ${TEMPDIR}/repo/${LS_REPO}/
+                if ! grep -q '.jenkins-external' .gitignore 2>/dev/null; then
+                  echo ".jenkins-external" >> .gitignore
+                  git add .gitignore
+                fi
                 git add ${TEMPLATED_FILES}
                 git commit -m 'Bot Updating Templated Files'
                 git push https://LinuxServer-CI:${GITHUB_TOKEN}@github.com/${LS_USER}/${LS_REPO}.git --all
@@ -254,12 +304,29 @@ pipeline {
               fi
               mkdir -p ${TEMPDIR}/gitbook
               git clone https://github.com/linuxserver/docker-documentation.git ${TEMPDIR}/gitbook/docker-documentation
-              if [[ "${BRANCH_NAME}" == "master" ]] && [[ (! -f ${TEMPDIR}/gitbook/docker-documentation/images/docker-${CONTAINER_NAME}.md) || ("$(md5sum ${TEMPDIR}/gitbook/docker-documentation/images/docker-${CONTAINER_NAME}.md | awk '{ print $1 }')" != "$(md5sum ${TEMPDIR}/docker-${CONTAINER_NAME}/docker-${CONTAINER_NAME}.md | awk '{ print $1 }')") ]]; then
-                cp ${TEMPDIR}/docker-${CONTAINER_NAME}/docker-${CONTAINER_NAME}.md ${TEMPDIR}/gitbook/docker-documentation/images/
+              if [[ ("${BRANCH_NAME}" == "master") || ("${BRANCH_NAME}" == "main") ]] && [[ (! -f ${TEMPDIR}/gitbook/docker-documentation/images/docker-${CONTAINER_NAME}.md) || ("$(md5sum ${TEMPDIR}/gitbook/docker-documentation/images/docker-${CONTAINER_NAME}.md | awk '{ print $1 }')" != "$(md5sum ${TEMPDIR}/docker-${CONTAINER_NAME}/.jenkins-external/docker-${CONTAINER_NAME}.md | awk '{ print $1 }')") ]]; then
+                cp ${TEMPDIR}/docker-${CONTAINER_NAME}/.jenkins-external/docker-${CONTAINER_NAME}.md ${TEMPDIR}/gitbook/docker-documentation/images/
                 cd ${TEMPDIR}/gitbook/docker-documentation/
                 git add images/docker-${CONTAINER_NAME}.md
                 git commit -m 'Bot Updating Documentation'
                 git push https://LinuxServer-CI:${GITHUB_TOKEN}@github.com/linuxserver/docker-documentation.git --all
+              fi
+              mkdir -p ${TEMPDIR}/unraid 
+              git clone https://github.com/linuxserver/docker-templates.git ${TEMPDIR}/unraid/docker-templates
+              git clone https://github.com/linuxserver/templates.git ${TEMPDIR}/unraid/templates
+              if [[ -f ${TEMPDIR}/unraid/docker-templates/linuxserver.io/img/${CONTAINER_NAME}-icon.png ]]; then
+                sed -i "s|master/linuxserver.io/img/linuxserver-ls-logo.png|master/linuxserver.io/img/${CONTAINER_NAME}-icon.png|" ${TEMPDIR}/docker-${CONTAINER_NAME}/.jenkins-external/${CONTAINER_NAME}.xml
+              fi
+              if [[ ("${BRANCH_NAME}" == "master") || ("${BRANCH_NAME}" == "main") ]] && [[ (! -f ${TEMPDIR}/unraid/templates/unraid/${CONTAINER_NAME}.xml) || ("$(md5sum ${TEMPDIR}/unraid/templates/unraid/${CONTAINER_NAME}.xml | awk '{ print $1 }')" != "$(md5sum ${TEMPDIR}/docker-${CONTAINER_NAME}/.jenkins-external/${CONTAINER_NAME}.xml | awk '{ print $1 }')") ]]; then
+                if grep -wq "${CONTAINER_NAME}" ${TEMPDIR}/unraid/templates/unraid/ignore.list; then
+                  echo "Image is on the ignore list, skipping Unraid template upload"
+                else
+                  cp ${TEMPDIR}/docker-${CONTAINER_NAME}/.jenkins-external/${CONTAINER_NAME}.xml ${TEMPDIR}/unraid/templates/unraid/
+                  cd ${TEMPDIR}/unraid/templates/
+                  git add unraid/${CONTAINER_NAME}.xml
+                  git commit -m 'Bot Updating Unraid Template'
+                  git push https://LinuxServer-CI:${GITHUB_TOKEN}@github.com/linuxserver/templates.git --all
+                fi
               fi
               rm -Rf ${TEMPDIR}'''
         script{
@@ -315,8 +382,9 @@ pipeline {
         environment name: 'EXIT_STATUS', value: ''
       }
       steps {
+        echo "Running on node: ${NODE_NAME}"
         sh "docker build --no-cache --pull -t ${IMAGE}:${META_TAG} \
-        --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION=\"${META_TAG}\" --build-arg BUILD_DATE=${GITHUB_DATE} ."
+        --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION=\"${VERSION_TAG}\" --build-arg BUILD_DATE=${GITHUB_DATE} ."
       }
     }
     // Build MultiArch Docker containers for push to LS Repo
@@ -328,8 +396,9 @@ pipeline {
       parallel {
         stage('Build X86') {
           steps {
+            echo "Running on node: ${NODE_NAME}"
             sh "docker build --no-cache --pull -t ${IMAGE}:amd64-${META_TAG} \
-            --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION=\"${META_TAG}\" --build-arg BUILD_DATE=${GITHUB_DATE} ."
+            --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION=\"${VERSION_TAG}\" --build-arg BUILD_DATE=${GITHUB_DATE} ."
           }
         }
         stage('Build ARMHF') {
@@ -337,12 +406,13 @@ pipeline {
             label 'ARMHF'
           }
           steps {
+            echo "Running on node: ${NODE_NAME}"
             echo 'Logging into Github'
             sh '''#! /bin/bash
                   echo $GITHUB_TOKEN | docker login ghcr.io -u LinuxServer-CI --password-stdin
                '''
             sh "docker build --no-cache --pull -f Dockerfile.armhf -t ${IMAGE}:arm32v7-${META_TAG} \
-                         --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION=\"${META_TAG}\" --build-arg BUILD_DATE=${GITHUB_DATE} ."
+                         --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION=\"${VERSION_TAG}\" --build-arg BUILD_DATE=${GITHUB_DATE} ."
             sh "docker tag ${IMAGE}:arm32v7-${META_TAG} ghcr.io/linuxserver/lsiodev-buildcache:arm32v7-${COMMIT_SHA}-${BUILD_NUMBER}"
             retry(5) {
               sh "docker push ghcr.io/linuxserver/lsiodev-buildcache:arm32v7-${COMMIT_SHA}-${BUILD_NUMBER}"
@@ -357,12 +427,13 @@ pipeline {
             label 'ARM64'
           }
           steps {
+            echo "Running on node: ${NODE_NAME}"
             echo 'Logging into Github'
             sh '''#! /bin/bash
                   echo $GITHUB_TOKEN | docker login ghcr.io -u LinuxServer-CI --password-stdin
                '''
             sh "docker build --no-cache --pull -f Dockerfile.aarch64 -t ${IMAGE}:arm64v8-${META_TAG} \
-                         --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION=\"${META_TAG}\" --build-arg BUILD_DATE=${GITHUB_DATE} ."
+                         --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION=\"${VERSION_TAG}\" --build-arg BUILD_DATE=${GITHUB_DATE} ."
             sh "docker tag ${IMAGE}:arm64v8-${META_TAG} ghcr.io/linuxserver/lsiodev-buildcache:arm64v8-${COMMIT_SHA}-${BUILD_NUMBER}"
             retry(5) {
               sh "docker push ghcr.io/linuxserver/lsiodev-buildcache:arm64v8-${COMMIT_SHA}-${BUILD_NUMBER}"
@@ -435,6 +506,13 @@ pipeline {
         environment name: 'EXIT_STATUS', value: ''
       }
       steps {
+        sh '''#! /bin/bash
+              echo "Packages were updated. Cleaning up the image and exiting."
+              if [ "${MULTIARCH}" == "true" ]; then
+                docker rmi ${IMAGE}:amd64-${META_TAG}
+              else
+                docker rmi ${IMAGE}:${META_TAG}
+              fi'''
         script{
           env.EXIT_STATUS = 'ABORTED'
         }
@@ -452,6 +530,13 @@ pipeline {
         }
       }
       steps {
+        sh '''#! /bin/bash
+              echo "There are no package updates. Cleaning up the image and exiting."
+              if [ "${MULTIARCH}" == "true" ]; then
+                docker rmi ${IMAGE}:amd64-${META_TAG}
+              else
+                docker rmi ${IMAGE}:${META_TAG}
+              fi'''
         script{
           env.EXIT_STATUS = 'ABORTED'
         }
@@ -476,7 +561,7 @@ pipeline {
           }
           sh '''#! /bin/bash
                 set -e
-                docker pull ghcr.io/linuxserver/lsiodev-ci:latest
+                docker pull ghcr.io/linuxserver/ci:latest
                 if [ "${MULTIARCH}" == "true" ]; then
                   docker pull ghcr.io/linuxserver/lsiodev-buildcache:arm32v7-${COMMIT_SHA}-${BUILD_NUMBER}
                   docker pull ghcr.io/linuxserver/lsiodev-buildcache:arm64v8-${COMMIT_SHA}-${BUILD_NUMBER}
@@ -501,7 +586,7 @@ pipeline {
                 -e WEB_PATH=\"${CI_WEBPATH}\" \
                 -e DO_REGION="ams3" \
                 -e DO_BUCKET="lsio-ci" \
-                -t ghcr.io/linuxserver/lsiodev-ci:latest \
+                -t ghcr.io/linuxserver/ci:latest \
                 python /ci/ci.py'''
         }
       }
@@ -541,7 +626,7 @@ pipeline {
                '''
           }
           sh '''#! /bin/bash
-                for DELETEIMAGE in "${GITHUBIMAGE}" "{GITLABIMAGE}" "${IMAGE}"; do
+                for DELETEIMAGE in "${GITHUBIMAGE}" "${GITLABIMAGE}" "${IMAGE}"; do
                   docker rmi \
                   ${DELETEIMAGE}:${META_TAG} \
                   ${DELETEIMAGE}:${EXT_RELEASE_TAG} \
@@ -605,6 +690,7 @@ pipeline {
                     docker manifest create ${MANIFESTIMAGE}:${META_TAG} ${MANIFESTIMAGE}:amd64-${META_TAG} ${MANIFESTIMAGE}:arm32v7-${META_TAG} ${MANIFESTIMAGE}:arm64v8-${META_TAG}
                     docker manifest annotate ${MANIFESTIMAGE}:${META_TAG} ${MANIFESTIMAGE}:arm32v7-${META_TAG} --os linux --arch arm
                     docker manifest annotate ${MANIFESTIMAGE}:${META_TAG} ${MANIFESTIMAGE}:arm64v8-${META_TAG} --os linux --arch arm64 --variant v8
+                    docker manifest push --purge ${MANIFESTIMAGE}:${EXT_RELEASE_TAG} || :
                     docker manifest create ${MANIFESTIMAGE}:${EXT_RELEASE_TAG} ${MANIFESTIMAGE}:amd64-${EXT_RELEASE_TAG} ${MANIFESTIMAGE}:arm32v7-${EXT_RELEASE_TAG} ${MANIFESTIMAGE}:arm64v8-${EXT_RELEASE_TAG}
                     docker manifest annotate ${MANIFESTIMAGE}:${EXT_RELEASE_TAG} ${MANIFESTIMAGE}:arm32v7-${EXT_RELEASE_TAG} --os linux --arch arm
                     docker manifest annotate ${MANIFESTIMAGE}:${EXT_RELEASE_TAG} ${MANIFESTIMAGE}:arm64v8-${EXT_RELEASE_TAG} --os linux --arch arm64 --variant v8
@@ -619,10 +705,13 @@ pipeline {
                   docker rmi \
                   ${DELETEIMAGE}:amd64-${META_TAG} \
                   ${DELETEIMAGE}:amd64-latest \
+                  ${DELETEIMAGE}:amd64-${EXT_RELEASE_TAG} \
                   ${DELETEIMAGE}:arm32v7-${META_TAG} \
                   ${DELETEIMAGE}:arm32v7-latest \
+                  ${DELETEIMAGE}:arm32v7-${EXT_RELEASE_TAG} \
                   ${DELETEIMAGE}:arm64v8-${META_TAG} \
-                  ${DELETEIMAGE}:arm64v8-latest || :
+                  ${DELETEIMAGE}:arm64v8-latest \
+                  ${DELETEIMAGE}:arm64v8-${EXT_RELEASE_TAG} || :
                 done
                 docker rmi \
                 ghcr.io/linuxserver/lsiodev-buildcache:arm32v7-${COMMIT_SHA}-${BUILD_NUMBER} \
@@ -642,9 +731,9 @@ pipeline {
         environment name: 'EXIT_STATUS', value: ''
       }
       steps {
-        echo "Pushing New tag for current commit ${EXT_RELEASE_CLEAN}-ls${LS_TAG_NUMBER}"
+        echo "Pushing New tag for current commit ${META_TAG}"
         sh '''curl -H "Authorization: token ${GITHUB_TOKEN}" -X POST https://api.github.com/repos/${LS_USER}/${LS_REPO}/git/tags \
-        -d '{"tag":"'${EXT_RELEASE_CLEAN}'-ls'${LS_TAG_NUMBER}'",\
+        -d '{"tag":"'${META_TAG}'",\
              "object": "'${COMMIT_SHA}'",\
              "message": "Tagging Release '${EXT_RELEASE_CLEAN}'-ls'${LS_TAG_NUMBER}' to master",\
              "type": "commit",\
@@ -652,9 +741,9 @@ pipeline {
         echo "Pushing New release for Tag"
         sh '''#! /bin/bash
               echo "Updating external repo packages to ${EXT_RELEASE_CLEAN}" > releasebody.json
-              echo '{"tag_name":"'${EXT_RELEASE_CLEAN}'-ls'${LS_TAG_NUMBER}'",\
+              echo '{"tag_name":"'${META_TAG}'",\
                      "target_commitish": "master",\
-                     "name": "'${EXT_RELEASE_CLEAN}'-ls'${LS_TAG_NUMBER}'",\
+                     "name": "'${META_TAG}'",\
                      "body": "**LinuxServer Changes:**\\n\\n'${LS_RELEASE_NOTES}'\\n**Repo Changes:**\\n\\n' > start
               printf '","draft": false,"prerelease": false}' >> releasebody.json
               paste -d'\\0' start releasebody.json > releasebody.json.done
@@ -681,7 +770,7 @@ pipeline {
                 TEMPDIR=$(mktemp -d)
                 docker pull ghcr.io/linuxserver/jenkins-builder:latest
                 docker run --rm -e CONTAINER_NAME=${CONTAINER_NAME} -e GITHUB_BRANCH="${BRANCH_NAME}" -v ${TEMPDIR}:/ansible/jenkins ghcr.io/linuxserver/jenkins-builder:latest 
-                docker pull ghcr.io/linuxserver/lsiodev-readme-sync
+                docker pull ghcr.io/linuxserver/readme-sync
                 docker run --rm=true \
                   -e DOCKERHUB_USERNAME=$DOCKERUSER \
                   -e DOCKERHUB_PASSWORD=$DOCKERPASS \
@@ -689,7 +778,7 @@ pipeline {
                   -e DOCKER_REPOSITORY=${IMAGE} \
                   -e GIT_BRANCH=master \
                   -v ${TEMPDIR}/docker-${CONTAINER_NAME}:/mnt \
-                  ghcr.io/linuxserver/lsiodev-readme-sync bash -c 'node sync' 
+                  ghcr.io/linuxserver/readme-sync bash -c 'node sync'
                 rm -Rf ${TEMPDIR} '''
         }
       }

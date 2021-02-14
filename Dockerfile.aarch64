@@ -7,31 +7,22 @@ ARG RSNAPSHOT_VERSION
 LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
 LABEL maintainer="nemchik"
 
-# packages as variables
-ARG BUILD_PACKAGES=""
-
-ARG RUNTIME_PACKAGES="\
-    openssh \
-    rsnapshot \
-    rsync"
-
 RUN \
- if [ -n "${BUILD_PACKAGES}" ]; then \
-    echo "**** install build packages ****" && \
-    apk add --no-cache \
-        --virtual=build-dependencies \
-        $BUILD_PACKAGES; \
+ echo "**** install build packages ****" && \
+ apk add --no-cache --virtual=build-dependencies \
+	curl && \
+ echo "**** install runtime packages ****" && \
+ if [ -z ${RSNAPSHOT_VERSION+x} ]; then \
+	RSNAPSHOT_VERSION=$(curl -sL "http://dl-cdn.alpinelinux.org/alpine/v3.12/main/x86_64/APKINDEX.tar.gz" | tar -xz -C /tmp \
+	&& awk '/^P:rsnapshot$/,/V:/' /tmp/APKINDEX | sed -n 2p | sed 's/^V://'); \
  fi && \
- if [ -n "${RUNTIME_PACKAGES}" ]; then \
-    echo "**** install runtime packages ****" && \
-    apk add --no-cache \
-        $RUNTIME_PACKAGES; \
- fi && \
+ apk add --no-cache \
+	openssh \
+	rsnapshot==${RSNAPSHOT_VERSION} \
+	rsync && \
  echo "**** cleanup ****" && \
- if [ -n "${BUILD_PACKAGES}" ]; then \
-    apk del --purge \
-        build-dependencies; \
- fi && \
+ apk del --purge \
+	build-dependencies && \
  rm -rf \
     /root/.cache \
     /tmp/*

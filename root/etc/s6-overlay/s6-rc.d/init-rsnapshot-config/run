@@ -2,8 +2,9 @@
 
 # make our folders and links
 mkdir -p \
-	/config/crontabs \
-	/data
+    /config/crontabs \
+    /data
+
 rm -rf /etc/rsnapshot.conf
 ln -s /config/rsnapshot.conf /etc/rsnapshot.conf
 
@@ -19,10 +20,13 @@ sed -i -E 's@^backup	/etc/		localhost/$@#backup	/etc/		localhost/@g' /etc/rsnaps
 sed -i -E 's@^backup	/usr/local/	localhost/$@#backup	/usr/local/	localhost/@g' /etc/rsnapshot.conf.default
 
 # copy crontab and rsnapshot defaults if needed
-[[ ! -f /config/crontabs/root ]] && \
-	cp /etc/crontabs/root /config/crontabs/
-[[ ! -f /etc/rsnapshot.conf ]] && \
-	cp /etc/rsnapshot.conf.default /config/rsnapshot.conf
+if [[ ! -f /config/crontabs/root ]]; then
+    cp /etc/crontabs/root /config/crontabs/
+fi
+
+if [[ ! -f /etc/rsnapshot.conf ]]; then
+    cp /etc/rsnapshot.conf.default /config/rsnapshot.conf
+fi
 
 # import user crontabs
 rm /etc/crontabs/*
@@ -30,4 +34,4 @@ cp /config/crontabs/* /etc/crontabs/
 
 # permissions
 chown -R abc:abc \
-	/config
+    /config

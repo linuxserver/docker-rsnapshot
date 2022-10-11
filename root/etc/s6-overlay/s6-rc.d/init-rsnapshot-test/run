@@ -1,3 +1,5 @@
 #!/usr/bin/with-contenv bash
 
+echo "***** Validating config file *****"
+
 rsnapshot configtest

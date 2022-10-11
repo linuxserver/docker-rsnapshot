@@ -1,3 +1,5 @@
 #!/usr/bin/with-contenv bash
 
+echo "***** Upgrading config file if required *****"
+
 rsnapshot upgrade-config-file

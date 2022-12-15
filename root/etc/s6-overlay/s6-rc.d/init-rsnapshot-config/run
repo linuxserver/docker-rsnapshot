@@ -1,4 +1,5 @@
 #!/usr/bin/with-contenv bash
+# shellcheck shell=bash
 
 # make our folders and links
 mkdir -p \
@@ -33,5 +34,5 @@ rm /etc/crontabs/*
 cp /config/crontabs/* /etc/crontabs/
 
 # permissions
-chown -R abc:abc \
+lsiown -R abc:abc \
     /config

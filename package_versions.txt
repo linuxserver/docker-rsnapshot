@@ -12,7 +12,7 @@ busybox-binsh           1.35.0-r29        apk
 ca-certificates         20220614-r4       apk     
 ca-certificates-bundle  20220614-r4       apk     
 coreutils               9.1-r0            apk     
-curl                    7.88.1-r1         apk     
+curl                    8.0.1-r0          apk     
 jq                      1.6-r2            apk     
 libacl                  2.3.1-r1          apk     
 libattr                 2.5.1-r2          apk     
@@ -20,7 +20,7 @@ libbsd                  0.11.7-r0         apk
 libbz2                  1.0.8-r4          apk     
 libc-utils              0.7.2-r3          apk     
 libcrypto3              3.0.8-r3          apk     
-libcurl                 7.88.1-r1         apk     
+libcurl                 8.0.1-r0          apk     
 libedit                 20221030.3.1-r0   apk     
 libintl                 0.21.1-r1         apk     
 libmd                   1.0.4-r0          apk     
@@ -42,7 +42,7 @@ openssh-keygen          9.1_p1-r2         apk
 openssh-server          9.1_p1-r2         apk     
 openssh-server-common   9.1_p1-r2         apk     
 openssh-sftp-server     9.1_p1-r2         apk     
-perl                    5.36.0-r0         apk     
+perl                    5.36.0-r1         apk     
 popt                    1.19-r0           apk     
 procps                  3.3.17-r2         apk     
 readline                8.2.0-r0          apk     

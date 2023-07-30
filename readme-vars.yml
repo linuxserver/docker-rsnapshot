@@ -53,7 +53,7 @@ app_setup_block: |
 
   ### cron
 
-  You will then need to edit `/config/crontabs/root` to set cron jobs to run rsnapshot.
+  You will then need to edit `/config/crontabs/abc` to set cron jobs to run rsnapshot.
   By default no cron jobs are enabled. Examples are includes based on information from the [rsnapshot readme](https://github.com/rsnapshot/rsnapshot/blob/master/README.md#configuration).
 
 # changelog

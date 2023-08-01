@@ -3,4 +3,4 @@
 
 echo "***** Validating config file *****"
 
-s6-setuidgid abc rsnapshot configtest
+rsnapshot configtest

@@ -3,7 +3,6 @@
 
 # make our folders and links
 mkdir -p \
-    /.snapshots \
     /data
 
 rm -rf /etc/rsnapshot.conf

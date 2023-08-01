@@ -3,4 +3,4 @@
 
 echo "***** Upgrading config file if required *****"
 
-s6-setuidgid abc rsnapshot upgrade-config-file
+rsnapshot upgrade-config-file

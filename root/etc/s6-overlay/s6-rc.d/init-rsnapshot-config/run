@@ -14,6 +14,7 @@ sed -i -E 's@^#cmd_ssh	/usr/bin/ssh$@cmd_ssh	/usr/bin/ssh@g' /etc/rsnapshot.conf
 sed -i -E 's@^#cmd_du		/usr/bin/du$@cmd_du		/usr/bin/du@g' /etc/rsnapshot.conf.default
 sed -i -E 's@^#cmd_rsnapshot_diff	/usr/local/bin/rsnapshot-diff$@cmd_rsnapshot_diff	/usr/bin/rsnapshot-diff@g' /etc/rsnapshot.conf.default
 sed -i -E 's@^#logfile	/var/log/rsnapshot$@logfile	/config/rsnapshot.log@g' /etc/rsnapshot.conf.default
+sed -i -E 's@^lockfile	/var/run/rsnapshot.pid$@lockfile	/config/rsnapshot.pid@g' /etc/rsnapshot.conf.default
 sed -i -E 's@^#link_dest	0$@link_dest	1@g' /etc/rsnapshot.conf.default
 sed -i -E 's@^backup	/home/		localhost/$@backup	/data/		localhost/\n#backup	/home/		localhost/@g' /etc/rsnapshot.conf.default
 sed -i -E 's@^backup	/etc/		localhost/$@#backup	/etc/		localhost/@g' /etc/rsnapshot.conf.default

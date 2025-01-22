@@ -51,7 +51,7 @@ openssh-keygen          9.7_p1-r4         apk
 openssh-server          9.7_p1-r4         apk     
 openssh-server-common   9.7_p1-r4         apk     
 openssh-sftp-server     9.7_p1-r4         apk     
-perl                    5.38.2-r0         apk     
+perl                    5.38.3-r0         apk     
 popt                    1.19-r3           apk     
 procps-ng               4.0.4-r0          apk     
 readline                8.2.10-r0         apk     

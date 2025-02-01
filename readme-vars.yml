@@ -23,6 +23,8 @@ opt_param_usage_include_vols: true
 opt_param_volumes:
   - {vol_path: "/.snapshots", vol_host_path: "/path/to/snapshots", desc: "Storage location for all snapshots."}
   - {vol_path: "/data", vol_host_path: "/path/to/data", desc: "Storage location for data to be backed up."}
+readonly_supported: false
+nonroot_supported: false
 # application setup block
 app_setup_block_enabled: true
 app_setup_block: |
@@ -93,6 +95,7 @@ init_diagram: |
   "rsnapshot:latest" <- Base Images
 # changelog
 changelogs:
+  - {date: "01.02.25:", desc: "Rebase to Alpine 3.21."}
   - {date: "06.03.24:", desc: "Rebase to Alpine 3.20."}
   - {date: "23.12.23:", desc: "Rebase to Alpine 3.19, add root periodic crontabs for logrotate."}
   - {date: "25.05.23:", desc: "Rebase to Alpine 3.18, deprecate armhf."}

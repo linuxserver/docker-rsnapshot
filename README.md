@@ -298,6 +298,7 @@ Once registered you can define the dockerfile to use with `-f Dockerfile.aarch64
 
 ## Versions
 
+* **01.02.25:** - Rebase to Alpine 3.21.
 * **06.03.24:** - Rebase to Alpine 3.20.
 * **23.12.23:** - Rebase to Alpine 3.19, add root periodic crontabs for logrotate.
 * **25.05.23:** - Rebase to Alpine 3.18, deprecate armhf.

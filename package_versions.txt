@@ -23,7 +23,7 @@ jq                      1.7.1-r0          apk
 libattr                 2.5.2-r2          apk     
 libbsd                  0.12.2-r0         apk     
 libbz2                  1.0.8-r6          apk     
-libcrypto3              3.3.6-r0          apk     
+libcrypto3              3.3.7-r0          apk     
 libcurl                 8.14.1-r2         apk     
 libedit                 20240808.3.1-r0   apk     
 libidn2                 2.3.7-r0          apk     
@@ -32,13 +32,13 @@ libmd                   1.1.0-r0          apk
 libncursesw             6.5_p20241006-r3  apk     
 libproc2                4.0.4-r2          apk     
 libpsl                  0.21.5-r3         apk     
-libssl3                 3.3.6-r0          apk     
+libssl3                 3.3.7-r0          apk     
 libunistring            1.2-r0            apk     
 libxxhash               0.8.2-r2          apk     
 linux-pam               1.6.1-r1          apk     
 lz4-libs                1.10.0-r0         apk     
-musl                    1.2.5-r9          apk     
-musl-utils              1.2.5-r9          apk     
+musl                    1.2.5-r11         apk     
+musl-utils              1.2.5-r11         apk     
 ncurses-terminfo-base   6.5_p20241006-r3  apk     
 netcat-openbsd          1.226.1.1-r0      apk     
 nghttp2-libs            1.64.0-r0         apk     
@@ -50,7 +50,7 @@ openssh-keygen          9.9_p2-r0         apk
 openssh-server          9.9_p2-r0         apk     
 openssh-server-common   9.9_p2-r0         apk     
 openssh-sftp-server     9.9_p2-r0         apk     
-perl                    5.40.3-r0         apk     
+perl                    5.40.4-r0         apk     
 popt                    1.19-r4           apk     
 procps-ng               4.0.4-r2          apk     
 readline                8.2.13-r0         apk     
